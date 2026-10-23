@@ -17,6 +17,16 @@ const config = {
 export const useEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true';
 const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY as string | undefined;
 
+/** Names (never values) of the settings that are empty or missing in this build. */
+export const missingFirebaseVars: string[] = [
+  ['VITE_FIREBASE_API_KEY', config.apiKey],
+  ['VITE_FIREBASE_AUTH_DOMAIN', config.authDomain],
+  ['VITE_FIREBASE_PROJECT_ID', config.projectId],
+  ['VITE_FIREBASE_APP_ID', config.appId],
+]
+  .filter(([, v]) => typeof v !== 'string' || v.trim() === '' || v.startsWith('YOUR_'))
+  .map(([name]) => name as string);
+
 export const isFirebaseConfigured = Object.values(config).every(
   (v) => typeof v === 'string' && v.trim() !== '' && !v.startsWith('YOUR_'),
 );

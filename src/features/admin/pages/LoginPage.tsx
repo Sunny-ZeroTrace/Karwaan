@@ -4,6 +4,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAdminAuth } from '../auth/AuthContext';
 import { friendlyAuthError } from '../auth/authErrors';
 import { AdminGate } from './AdminGate';
+import { missingFirebaseVars } from '../../../lib/firebase';
 
 export default function LoginPage() {
   const { state, signIn, sendReset } = useAdminAuth();
@@ -47,7 +48,8 @@ export default function LoginPage() {
 
         {state.status === 'not-configured' && (
           <p className="admin-error" role="alert">
-            Firebase is not configured for this site yet. See setup.md (copy .env.example to .env.local).
+            Firebase is not configured for this site yet. Missing in this build: {missingFirebaseVars.join(', ') || 'nothing'}.
+            Add them in Vercel (Settings, Environment Variables) and redeploy.
           </p>
         )}
 
