@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./base.css";
+@import "./layout.css";
+@import "./components.css";
+@import "./sections.css";
+@import "./pages.css";
+@import "./volunteer.css";
+
+/* Expose the design tokens to Tailwind utilities (bg-ink, text-paper, font-serif...) for later stages. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-g2: var(--g2);
+  --color-g4: var(--g4);
+  --font-serif: var(--f-serif);
+  --font-sans: var(--f-sans);
+  --font-mono: var(--f-mono);
+}

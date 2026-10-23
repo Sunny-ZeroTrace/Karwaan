@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// Karwaan Foundation: Cloud Firestore Security Rules
+//
+// Collections
+//   volunteerApplications/{id}   public may CREATE a valid pending application; only active admins may read/review
+//   admins/{uid}                 allowlist, managed ONLY in the Firebase Console; a signed-in, verified user may read their own record
+//   anything else                denied
+//
+// An "active admin" must be: signed in, with a VERIFIED email, and have an admins/{uid} document
+// (uid = Firebase Auth UID) with role == "admin", active == true and an email matching the signed-in email.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+
+    function isActiveAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin'
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email.lower()
+             == request.auth.token.email.lower();
+    }
+
+    // A string with at least one non-space character and at most `max` characters.
+    function nonBlank(v, max) {
+      return v is string && v.size() <= max && v.matches('[\\s\\S]*\\S[\\s\\S]*');
+    }
+
+    function preferenceOptions() {
+      return ['Animal Welfare', 'Community Support', 'Education', 'Environmental Initiatives', 'Events & Ground Support'];
+    }
+
+    function availabilityOptions() {
+      return ['Weekdays', 'Weekends', 'Both weekdays and weekends', 'Depends on the activity'];
+    }
+
+    function requiredKeys() {
+      return ['fullName', 'age', 'whatsappNumber', 'email', 'city', 'preference1', 'preference2', 'availability',
+              'unexpectedSituationResponse', 'independentTaskResponse', 'initiativeResponse',
+              'privacyConsent', 'privacyNoticeVersion', 'consentedAt', 'createdAt', 'status',
+              'referenceCode', 'fullNameLower', 'emailLower'];
+    }
+
+    // ---------- a new public application ----------
+
+    function isValidNewApplication(d) {
+      return
+        // exact field set: nothing extra (so no reviewedAt / reviewedBy / other admin fields)
+        d.keys().hasAll(requiredKeys())
+        && d.keys().hasOnly(requiredKeys().concat(['additionalInformation']))
+
+        // personal information
+        && nonBlank(d.fullName, 100)
+        && d.age is int && d.age >= 0 && d.age <= 150            // sanity range only; NOT an eligibility rule
+        && d.whatsappNumber is string && d.whatsappNumber.size() <= 25
+        && d.whatsappNumber.matches('\\+?[0-9 ()\\-.]+') && d.whatsappNumber.matches('(.*[0-9]){7}.*')
+        && d.email is string && d.email.size() <= 254 && d.email.matches('[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}')
+        && nonBlank(d.city, 100)
+
+        // preferences and availability
+        && d.preference1 in preferenceOptions()
+        && d.preference2 in preferenceOptions()
+        && d.preference1 != d.preference2
+        && d.availability in availabilityOptions()
+
+        // scenario answers and optional extra information
+        && nonBlank(d.unexpectedSituationResponse, 3000)
+        && nonBlank(d.independentTaskResponse, 3000)
+        && nonBlank(d.initiativeResponse, 3000)
+        && (!('additionalInformation' in d) || (d.additionalInformation is string && d.additionalInformation.size() <= 3000))
+
+        // consent and record management
+        && d.privacyConsent == true
+        && d.privacyNoticeVersion is string && d.privacyNoticeVersion.size() > 0 && d.privacyNoticeVersion.size() <= 40
+        && d.consentedAt == request.time
+        && d.createdAt == request.time
+        && d.status == 'pending'
+
+        // technical fields
+        && d.referenceCode is string && d.referenceCode.matches('KF-[A-Z0-9]{8}')
+        && d.fullNameLower == d.fullName.lower()
+        && d.emailLower == d.email.lower();
+    }
+
+    // ---------- an admin review: ONLY status, reviewedAt, reviewedBy may change ----------
+
+    function isValidReview() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
+        && request.resource.data.keys().hasAll(['status', 'reviewedAt', 'reviewedBy'])
+        && request.resource.data.status in ['pending', 'accepted', 'declined']
+        && request.resource.data.status != resource.data.status
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.reviewedBy == request.auth.uid;
+    }
+
+    // ---------- collections ----------
+
+    match /volunteerApplications/{applicationId} {
+      allow create: if isValidNewApplication(request.resource.data);
+      allow get, list: if isActiveAdmin();
+      allow update: if isActiveAdmin() && isValidReview();
+      allow delete: if false;
+    }
+
+    match /admins/{uid} {
+      // A signed-in, email-verified person may read ONLY their own record (needed by the login check).
+      allow get: if request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true;
+      // Nobody can list, create, change or delete admin records from a browser. Use the Firebase Console.
+      allow list, create, update, delete: if false;
+    }
+
+    // Everything else is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

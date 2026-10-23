@@ -1,0 +1,39 @@
+/*
+  Karwaan design tokens.
+  Monochrome on purpose: black, white and greys (the logo is black on white, and the reference
+  site works the same way). Photography will supply the colour. The only other colour is the
+  error red, used in form validation.
+*/
+:root {
+  --paper: #fafafa;
+  --ink: #0b0b0b;
+  --g1: #efefef;
+  --g2: #dcdcdc;
+  --g3: #9a9a9a;
+  --g4: #5c5c5c;
+  --error: #c0143c;
+
+  /* Context colours: rebound by .theme-dark */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --muted: var(--g4);
+  --line: rgba(11, 11, 11, 0.2);
+  --focus: var(--ink);
+
+  --f-serif: 'Instrument Serif', 'Times New Roman', Times, serif;
+  --f-sans: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --gutter: clamp(1.25rem, 3.2vw, 3rem);
+  --max: 100rem;
+  --header-h: 4.25rem;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.theme-dark {
+  --bg: var(--ink);
+  --fg: var(--paper);
+  --muted: #a9a9a9;
+  --line: rgba(250, 250, 250, 0.24);
+  --focus: var(--paper);
+}
